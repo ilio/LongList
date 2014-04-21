@@ -13,7 +13,6 @@ module Il {
 
     export interface ISettings {
         viewport: HTMLElement;
-        scrollview: HTMLElement;
         rowTemplate: HTMLElement;
         data: INotifyPropertyChanged[];
     }
@@ -25,19 +24,48 @@ module Il {
         private rowsBinders: ElementBinder[];
         private nope = () => { };
         private rowHeight: number;
-
-        get test(): number {
-            return 0;
-        }
+        private scrollview: HTMLElement;
+        private viewportHeight: number;
 
         constructor(settings: ISettings) {
             this.settings = settings;
             this.currentFirstRowIndex = 0;
+            var style = document.createElement("style");
+            style.type = "text/css";
+            style.innerHTML =   ".longlist-scrollview {" +
+                                    "position: relative;" +
+                                    "overflow: hidden;" +
+                                "}" +
+                                ".longlist-viewport {" +
+                                    "overflow: auto;" +
+                                "}" +
+                                ".longlist-hidden, .longlist-row-template {" +
+                                    "display: none;" +
+                                "}";
+
+            document.head.insertBefore(style, document.head.firstChild);
+
+            var viewport = settings.viewport;
+            UiUtility.empty(viewport);
+            UiUtility.addClass(viewport, "longlist-viewport");
+
+            if (UiUtility.getHeight(viewport) == 0) {
+                viewport.style.height = "100px";
+            }
+
+            this.viewportHeight = UiUtility.getHeight(viewport);
+            this.scrollview = document.createElement("DIV");
+            var scrollview = this.scrollview;
+            UiUtility.addClass(scrollview, "longlist-scrollview");
+            viewport.appendChild(scrollview);
+
+            UiUtility.addClass(settings.rowTemplate, "longlist-row-template");
+
             var rowTemplate = settings.rowTemplate;
             this.rowHeight = UiUtility.getHeight(rowTemplate, true);
-            
-            settings.viewport.addEventListener("scroll", () => {
-                var scrollTop = settings.viewport.scrollTop;
+
+            viewport.addEventListener("scroll", () => {
+                var scrollTop = viewport.scrollTop;
                 var from = Math.floor((scrollTop) / this.rowHeight);
                 console.log("scroll", scrollTop, from, this.currentFirstRowIndex);
                 if (this.currentFirstRowIndex == from) {
@@ -53,30 +81,30 @@ module Il {
         }
 
         updateRows = () => {
-            this.settings.scrollview.style.height = this.settings.data.length * this.rowHeight + "px";
+            if (UiUtility.getHeight(this.settings.viewport) > this.viewportHeight) {
+                
+            } 
+            this.scrollview.style.height = this.settings.data.length * this.rowHeight + "px";
             for (var i = 0; i < this.rows.length; i++) {
                 var row = this.rows[i];
                 var dataItem = this.settings.data[i + this.currentFirstRowIndex];
                 if (dataItem == undefined) {
-                    UiUtility.addClass(row, "ll-hidden");
+                    UiUtility.addClass(row, "longlist-hidden");
                     this.rowsBinders[i].dataSource = null;
                 } else {
-                    UiUtility.removeClass(row, "ll-hidden");
+                    UiUtility.removeClass(row, "longlist-hidden");
                     this.rowsBinders[i].dataSource = dataItem;
                 }
             }
         }
-
         initialize = () => {
             this.rows = [];
             this.rowsBinders = [];
-            var viewportHeight = UiUtility.getHeight(this.settings.viewport);
-            var scrollview = this.settings.scrollview;
-            while (scrollview.firstChild) {
-                scrollview.removeChild(scrollview.firstChild);
-            }
+            this.viewportHeight = UiUtility.getHeight(this.settings.viewport);
+            var scrollview = this.scrollview;
             this.settings.viewport.scrollTop = 0;
 
+            UiUtility.empty(scrollview);
             for (var i = 0; i < this.settings.data.length; i++) {
                 var row = <HTMLElement>this.settings.rowTemplate.cloneNode(true);
                 UiUtility.removeClass(row, "template");
@@ -88,10 +116,11 @@ module Il {
                 this.rowsBinders.push(binder);
                 this.rows.push(row);
                 scrollview.appendChild(row);
-                if (i * this.rowHeight > viewportHeight) {
+                if (i * this.rowHeight > this.viewportHeight) {
                     break;
                 }
             }
+
             var updateView = () => {
                 this.updateRows();
                 var binders = this.rowsBinders;
@@ -102,8 +131,6 @@ module Il {
             };
             updateView();
         }
-
-
     }
 
     class UiUtility {
@@ -204,7 +231,11 @@ module Il {
             elementClassName = elementClassName.replace(/(^\s+)|(\s+$)/gi, "").replace(/\s+/gi, " ");
             element.className = elementClassName;
         }
-
+        static empty = (target: HTMLElement) => {
+            while (target.firstChild) {
+                target.removeChild(target.firstChild);
+            }
+        }
     }
 }
 
@@ -287,7 +318,11 @@ module Il {
                                 }
                             case "text":
                                 {
-                                    targetElement.innerText = value;
+                                    if (targetElement.innerText === undefined) {
+                                        targetElement.textContent = value;
+                                    } else {
+                                        targetElement.innerText = value;
+                                    }
                                     break;
                                 }
                             case "class":
@@ -331,23 +366,16 @@ interface Window {
 
 declare var window: Window;
 
-window.data = [
-    { name1: "n1" },
-    { name1: "n2" },
-    { name1: "n3" },
-    { name1: "n4" },
-    { name1: "n5" },
-    { name1: "n6" },
-    { name1: "n7" },
-    { name1: "n8" },
-    { name1: "n9" }
-];
+window.data = [];
+for (var i = 0; i < 100000; i++) {
+    window.data.push({ name1: ("name" + i), value2: ("v2." + i) });
+}
+
 window.setInterval(() => {
     window.data[1].value2 = new Date();
 }, 1000);
 window.ll = new Il.LongList({
     viewport: document.getElementById("vp"),
-    scrollview: document.getElementById("sv"),
     rowTemplate: document.getElementById("t1"),
     data: window.data
 });
