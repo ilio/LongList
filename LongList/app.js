@@ -281,15 +281,15 @@ var Il;
                     }
 
                     var children = targetElement.children;
-                    for (var i = 0; i < children.length; i++) {
-                        var child = children[i];
+                    for (var ii = 0; ii < children.length; ii++) {
+                        var child = children[ii];
                         var childMap = _this.createBindingMap(child);
                         for (var key in childMap) {
                             map[key] = map[key] || [];
                             var parentActions = map[key];
                             var childActions = childMap[key];
-                            for (var ii = 0; ii < childActions.length; ii++) {
-                                parentActions.push(childActions[ii]);
+                            for (var iii = 0; iii < childActions.length; iii++) {
+                                parentActions.push(childActions[iii]);
                             }
                         }
                     }
